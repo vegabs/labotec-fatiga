@@ -123,7 +123,7 @@ cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
 mp_facemesh = mp.solutions.face_mesh.FaceMesh(False, 1, True, 0.5)
 mp_drawing = mp.solutions.drawing_utils
 mp_circle = mp_drawing.DrawingSpec(thickness=1, circle_radius=2, color=(255,0,0))
-mp_line = mp_drawing.DrawingSpec(thickness=2, circle_radius=1, color=(0,255,0))
+mp_line = mp_drawing.DrawingSpec(thickness=1, circle_radius=1, color=(0,255,0))
 denormalize_coordinates = mp_drawing._normalized_to_pixel_coordinates
 
 # font settings -------- 
@@ -150,48 +150,37 @@ while True:
 
         results = mp_facemesh.process(frame_rgb)
         faces_found = results.multi_face_landmarks
-        # print(results.multi_face_landmarks)
 
         if faces_found != None:
             for this_face_landmark in faces_found:
                 mp_drawing.draw_landmarks(frame, this_face_landmark, mp.solutions.face_mesh.FACEMESH_CONTOURS, mp_circle, mp_line)
 
-                # indx = 0
-
-                # for lm in this_face_landmark.landmark:
-                #     if indx in all_chosen_idxs:
-                #         esta = True
-                #     else:
-                #         esta = False
-
-                #     if esta:
-                #         cv2.putText(frame, str(indx), (int(lm.x * width), int(lm.y * height)), font, font_size, font_color, font_tich)
-                #     print(indx)
-                #     indx = indx + 1
-
+                # calculate EAR
                 EAR, _ = calculate_avg_ear(this_face_landmark.landmark, chosen_left_eye_idxs, chosen_right_eye_idxs, width, height)
-                count_rate = count_rate + 1
                 ear_vector.append(EAR)
-
+                count_rate = count_rate + 1
+                
                 if count_rate == 5:
 
                     if len(ear_vector) > 14:
-                        input_vector = ear_vector # Example input vector with 15 elements
+                        input_vector = ear_vector
                         predicted_category = predict_category(input_vector)
                         last_category = predicted_category
-                        #print(f"Predicted Category: {predicted_category}")
-
                         prediction_vector.append(predicted_category)
                     
+                    # check 1st condition: if the last 5 predictions where long blink
                     if len(prediction_vector) > 4:
-                        print('estoy aqui')
                         all_long_blink = all(element == 'long_blink' for element in prediction_vector)
                         if all_long_blink:
-                            print('DORMIDOOOOOO!')
                             sound_thread = threading.Thread(target=play_sound)
+                            sound_thread.start() # play alarm
 
-                            # Start the thread
-                            sound_thread.start()
+                    # check 2nd condition:
+                    # if True:
+                    #     prop = total_long_blink / (total_long_blink + total_short_blink)
+                    #     if prop >= 0.25:
+                    #         sound_thread = threading.Thread(target=play_sound)
+                    #         sound_thread.start() # play alarm
 
                     count_rate = 0
                 
