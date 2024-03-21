@@ -10,26 +10,20 @@ import pygame
 
 print(cv2.__version__)
 
+# FILES
+MODEL_FILENAME = 'models/svm_modelv2.pkl'
+AUDIO_FILENAME = 'media/noti.wav'
+
 # Load the exported SVM model
-svm_model = joblib.load('svm_modelv2.pkl')
+svm_model = joblib.load(MODEL_FILENAME)
 
 def play_sound():
-    # Initialize Pygame mixer
     pygame.mixer.init()
-
-    # Load the sound file (replace 'sound_file.wav' with your actual sound file)
-    sound = pygame.mixer.Sound('noti.wav')
-
-    # Play the sound
+    sound = pygame.mixer.Sound(AUDIO_FILENAME)
     sound.play()
-
-    # Wait until the sound finishes playing
     pygame.time.wait(int(sound.get_length() * 1000))
-
-    # Clean up the mixer
     pygame.mixer.quit()
 
-# Define a function to make predictions using the loaded model
 def predict_category(input_vector):
     # Convert input_vector to a numpy array if it's not already
     input_vector = np.array(input_vector).reshape(1, -1)  # Reshape to 2D array
@@ -38,8 +32,6 @@ def predict_category(input_vector):
     predicted_category = svm_model.predict(input_vector)
     
     return predicted_category[0]
-
-
 
 def distance(point_1, point_2):
     """Calculate l2-norm between two points"""
@@ -102,19 +94,14 @@ def calculate_avg_ear(landmarks, left_eye_idxs, right_eye_idxs, image_w, image_h
  
     return Avg_EAR, (left_lm_coordinates, right_lm_coordinates)
 
-ear_vector = deque(maxlen=15)
-prediction_vector = deque(maxlen=5)
+# CV2 settings ---------
+width = 1280
+height = 720
 
 frame_rate = 23
 input_rate = 5
 count_rate = 0
 prev = 0
-
-csv_file = 'hugo-open.csv'
-
-# CV2 settings ---------
-width = 1280
-height = 720
 
 last_category = ''
 period_analyzes = 60
@@ -122,6 +109,9 @@ total_long_blink = 0
 total_short_blink = 0
 total = 0
 consecutive_long = 0
+
+ear_vector = deque(maxlen=15)
+prediction_vector = deque(maxlen=5)
 
 cam = cv2.VideoCapture(0)
 cam.set(cv2.CAP_PROP_FRAME_WIDTH, width)
@@ -147,8 +137,6 @@ font_tich = 1
 chosen_left_eye_idxs  = [362, 385, 387, 263, 373, 380]
 chosen_right_eye_idxs = [33,  160, 158, 133, 153, 144]
 all_chosen_idxs = chosen_left_eye_idxs + chosen_right_eye_idxs
-
-
 
 while True:
     time_elapsed = time.time() - prev
@@ -181,16 +169,11 @@ while True:
                 #     print(indx)
                 #     indx = indx + 1
 
-
                 EAR, _ = calculate_avg_ear(this_face_landmark.landmark, chosen_left_eye_idxs, chosen_right_eye_idxs, width, height)
                 count_rate = count_rate + 1
                 ear_vector.append(EAR)
-                #print(len(ear_vector))
 
                 if count_rate == 5:
-                    
-                    #print(ear_vector)
-                    #print(count_rate)
 
                     if len(ear_vector) > 14:
                         input_vector = ear_vector # Example input vector with 15 elements
@@ -212,14 +195,11 @@ while True:
 
                     count_rate = 0
                 
-                #print(count_rate)
                 cv2.putText(frame, f"CATEGORY: {last_category}", (1, 60), cv2.FONT_HERSHEY_COMPLEX, 0.9, (255, 255, 255), 2)
-
                 cv2.putText(frame, f"EAR: {round(EAR, 2)}", (1, 24), cv2.FONT_HERSHEY_COMPLEX, 0.9, (255, 255, 255), 2)    
-
     
-    cv2.imshow("my WEBcam", frame)
-    cv2.moveWindow("my WEBcam", 1, 1)
+    cv2.imshow("Detector de fatiga", frame)
+    cv2.moveWindow("Detector de fatiga", 1, 1)
     if cv2.waitKey(1) & 0xFF == ord("q"):
         break
 

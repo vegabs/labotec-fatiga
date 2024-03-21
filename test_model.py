@@ -1,17 +1,17 @@
 import joblib
 import numpy as np
 
+model_file = 'models/svm_modelv2.pkl'
+
 # Load the exported SVM model
-svm_model = joblib.load('svm_modelv2.pkl')
+svm_model = joblib.load(model_file)
 
 # Define a function to make predictions using the loaded model
 def predict_category(input_vector):
     # Convert input_vector to a numpy array if it's not already
     input_vector = np.array(input_vector).reshape(1, -1)  # Reshape to 2D array
-    
     # Make predictions using the loaded model
     predicted_category = svm_model.predict(input_vector)
-    
     return predicted_category[0]
 
 # Example usage

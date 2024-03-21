@@ -3,8 +3,11 @@ from sklearn import svm
 from sklearn.model_selection import train_test_split
 import joblib
 
+model_filename = 'models/svm_modelv2.pkl'
+dataset_filename = 'dataset/dataset-finalv2.csv'
+
 # Load CSV files
-combined_df = pd.read_csv('dataset-finalv2.csv')
+combined_df = pd.read_csv(dataset_filename)
 
 # Separate features (X) and labels (y)
 X = combined_df.iloc[:, :15]  # Assuming the first 15 columns are features
@@ -24,4 +27,4 @@ accuracy = svm_classifier.score(X_test, y_test)
 print(f"Model Accuracy: {accuracy}")
 
 # Export the trained model
-joblib.dump(svm_classifier, 'svm_modelv2.pkl')
+joblib.dump(svm_classifier, model_filename)
