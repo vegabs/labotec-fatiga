@@ -1,0 +1,1 @@
+# labotec-fatiga
