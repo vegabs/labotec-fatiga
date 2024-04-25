@@ -7,6 +7,12 @@ from collections import deque
 import joblib
 import threading
 import pygame
+import argparse
+import sys
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
+from utils import visualize
+
 
 print(cv2.__version__)
 
@@ -99,7 +105,6 @@ width = 1280
 height = 720
 
 frame_rate = 23
-input_rate = 5
 count_rate = 0
 prev = 0
 
@@ -185,7 +190,8 @@ while True:
                     count_rate = 0
                 
                 cv2.putText(frame, f"CATEGORY: {last_category}", (1, 60), cv2.FONT_HERSHEY_COMPLEX, 0.9, (255, 255, 255), 2)
-                cv2.putText(frame, f"EAR: {round(EAR, 2)}", (1, 24), cv2.FONT_HERSHEY_COMPLEX, 0.9, (255, 255, 255), 2)    
+                cv2.putText(frame, f"EAR: {round(EAR, 2)}", (1, 24), cv2.FONT_HERSHEY_COMPLEX, 0.9, (255, 255, 255), 2)  
+                print(f'[INFO] Ojos: {last_category}, Celular: 0, Cigarro: 0, Distraccion: 0')  
     
     cv2.imshow("Detector de fatiga", frame)
     cv2.moveWindow("Detector de fatiga", 1, 1)
