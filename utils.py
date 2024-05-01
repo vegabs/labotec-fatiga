@@ -4,9 +4,9 @@ import numpy as np
 
 MARGIN = 10  # pixels
 ROW_SIZE = 10  # pixels
-FONT_SIZE = 2
-FONT_THICKNESS = 3
-TEXT_COLOR = (255, 255, 0)  # red
+FONT_SIZE = 1
+FONT_THICKNESS = 1
+TEXT_COLOR = (0, 0, 255)  # red
 
 
 def visualize(
@@ -25,7 +25,7 @@ def visualize(
     bbox = detection.bounding_box
     start_point = bbox.origin_x, bbox.origin_y
     end_point = bbox.origin_x + bbox.width, bbox.origin_y + bbox.height
-    cv2.rectangle(image, start_point, end_point, TEXT_COLOR, 3)
+    cv2.rectangle(image, start_point, end_point, TEXT_COLOR, 1)
 
     # Draw label and score
     category = detection.categories[0]
