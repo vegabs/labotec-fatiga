@@ -11,6 +11,7 @@ import sys
 import json
 from collections import deque
 from mediapipe.tasks import python
+import simpleaudio as sa
 from mediapipe.tasks.python import vision
 from utils import visualize
 
@@ -45,11 +46,13 @@ def show_text(my_frame, my_text, id):
 
 
 def play_sound():
-    pygame.mixer.init()
-    sound = pygame.mixer.Sound(AUDIO_FILENAME)
-    sound.play()
-    pygame.time.wait(int(sound.get_length() * 1000))
-    pygame.mixer.quit()
+    #pygame.mixer.init()
+    #sound = pygame.mixer.Sound(AUDIO_FILENAME)
+    #sound.play()
+    # pygame.time.wait(int(sound.get_length() * 50))
+    # pygame.mixer.quit()
+    wave_obj = sa.WaveObject.from_wave_file(AUDIO_FILENAME)
+    play_obj = wave_obj.play()
 
 
 def predict_category(input_vector):
@@ -123,6 +126,7 @@ def visualize_callback(
     result.timestamp_ms = timestamp_ms
     detection_result_list.append(result)
 
+
 def get_head_position(face_landmark, face_2d, face_3d, img_h, img_w):
     for idx, lm in enumerate(face_landmark):
         if (
@@ -167,7 +171,10 @@ def get_head_position(face_landmark, face_2d, face_3d, img_h, img_w):
     # Display the nose direction
     nose_3d_projection, jacobian = cv2.projectPoints(nose_3d, rot_vec, trans_vec, cam_matrix, dist_matrix)
 
-    return face_2d, face_3d, nose_2d, nose_3d, x, y, z 
+    p1 = (int(nose_2d[0]), int(nose_2d[1]))
+    p2 = (int(nose_2d[0] + y * 10), int(nose_2d[1] - x * 10))
+    
+    return face_2d, face_3d, p1, p2, x, y, z
 
 # ----------------------------------------------------------------------------
 
@@ -201,12 +208,20 @@ total = 0
 consecutive_long = 0
 svm_model = joblib.load(MODEL_FILENAME)
 
+# DISTRACTION PARAMETERS
+distraction_left = deque(maxlen=5)
+distraction_right = deque(maxlen=5)
+distraction_top = deque(maxlen=5)
+distraction_bottom = deque(maxlen=5)
+status_head = 0
+
 # MEDIAPIPE SETTINGS
 mp_facemesh = mp.solutions.face_mesh.FaceMesh(False, 1, True, 0.5)
 mp_drawing = mp.solutions.drawing_utils
 mp_circle = mp_drawing.DrawingSpec(thickness=1, circle_radius=1, color=(255, 255, 255))
 mp_line = mp_drawing.DrawingSpec(thickness=1, circle_radius=1, color=(255, 255, 255))
 denormalize_coordinates = mp_drawing._normalized_to_pixel_coordinates
+cellphone_detection = deque(maxlen=10)
 
 # Visualization parameters
 fps_avg_frame_count = 10
@@ -214,6 +229,9 @@ frame_rate = 23
 input_rate = 5
 count_rate = 0
 prev = 0
+
+# AUDIO ALERT
+alert_raised = False
 
 # OBJECT DETECTION SETTINGS
 status_cellphone = "NO"
@@ -250,6 +268,8 @@ while True:
 
     img_h, img_w, img_c = frame.shape
 
+    alert_raised = False
+
     if time_elapsed > 1.0 / frame_rate:
         prev = time.time()
 
@@ -261,83 +281,74 @@ while True:
         if faces_found != None:
             for this_face_landmark in faces_found:
 
-                # OBJECT DETECTION
+                # OBJECT DETECTION ------------------------------------------------------------------------------------
+                # -----------------------------------------------------------------------------------------------------
                 detector.detect_async(mp_image, counter)
                 current_frame = mp_image.numpy_view()
                 current_frame = cv2.cvtColor(current_frame, cv2.COLOR_RGB2BGR)
+                
+                # print(cellphone_detection)
+                # print("-----------")
+                if cellphone_detection.count(1) >= 3:
+                    alert_raised = True
 
-                # Calculate the FPS
-                if counter % fps_avg_frame_count == 0:
-                    end_time = time.time()
-                    fps = fps_avg_frame_count / (end_time - start_time)
-                    start_time = time.time()
+                # # Calculate the FPS
+                # if counter % fps_avg_frame_count == 0:
+                #     end_time = time.time()
+                #     fps = fps_avg_frame_count / (end_time - start_time)
+                #     start_time = time.time()
 
-                # Show the FPS
-                fps_text = "FPS = {:.1f}".format(fps)
+                # # Show the FPS
+                # fps_text = "FPS = {:.1f}".format(fps)
 
                 # HEAD POSITION & DISTRACTION -------------------------------------------------------------------
-                face_2d, face_3d, nose_2d, nose_3d, x, y, z = get_head_position(this_face_landmark.landmark, face_2d, face_3d, img_h, img_w)
-                # for idx, lm in enumerate(this_face_landmark.landmark):
-                #     if (
-                #         idx == 33
-                #         or idx == 263
-                #         or idx == 1
-                #         or idx == 61
-                #         or idx == 291
-                #         or idx == 199
-                #     ):
-                #         if idx == 1:
-                #             nose_2d = (lm.x * img_w, lm.y * img_h)
-                #             nose_3d = (lm.x * img_w, lm.y * img_h, lm.z * 3000)
-
-                #         x, y = int(lm.x * img_w), int(lm.y * img_h)
-                #         face_2d.append([x, y]) # Get the 2D Coordinates
-                #         face_3d.append([x, y, lm.z]) # Get the 3D Coordinates
-
-                # face_2d = np.array(face_2d, dtype=np.float64) # Convert it to the NumPy array
-                # face_3d = np.array(face_3d, dtype=np.float64) # Convert it to the NumPy array
-
-                # focal_length = 1 * img_w # The camera matrix
-
-                # cam_matrix = np.array(
-                #     [
-                #         [focal_length, 0, img_h / 2],
-                #         [0, focal_length, img_w / 2],
-                #         [0, 0, 1],
-                #     ]
-                # )
-
-                # dist_matrix = np.zeros((4, 1), dtype=np.float64) # The distortion parameters
-                # success, rot_vec, trans_vec = cv2.solvePnP(face_3d, face_2d, cam_matrix, dist_matrix) # Solve PnP
-                # rmat, jac = cv2.Rodrigues(rot_vec) # Get rotational matrix
-                # angles, mtxR, mtxQ, Qx, Qy, Qz = cv2.RQDecomp3x3(rmat) # Get angles
-
-                # # Get the y rotation degree
-                # x = angles[0] * 360
-                # y = angles[1] * 360
-                # z = angles[2] * 360
+                # -----------------------------------------------------------------------------------------------
+                face_2d, face_3d, p1, p2, x, y, z = get_head_position(this_face_landmark.landmark, face_2d, face_3d, img_h, img_w)
 
                 # See where the user's head tilting
-                if y < -10:
+                if y < -15:
                     text = "Mirando Izquierda"
-                elif y > 10:
+                    status_head = -1
+                    distraction_left.append(1)
+                    distraction_right.append(0)
+                    distraction_bottom.append(0)
+                    distraction_top.append(0)
+                elif y > 15:
                     text = "Mirando Derecha"
-                elif x < -10:
+                    status_head = 1
+                    distraction_left.append(0)
+                    distraction_right.append(1)
+                    distraction_bottom.append(0)
+                    distraction_top.append(0)
+                elif x < -15:
                     text = "Mirando Abajo"
-                elif x > 10:
+                    status_head = -2
+                    distraction_left.append(0)
+                    distraction_right.append(0)
+                    distraction_bottom.append(1)
+                    distraction_top.append(0)
+                elif x > 15:
                     text = "Mirando Arriba"
+                    status_head = 2
+                    distraction_left.append(0)
+                    distraction_right.append(0)
+                    distraction_bottom.append(0)
+                    distraction_top.append(1)
                 else:
                     text = "Enfrente"
-
-                # Display the nose direction
-                # nose_3d_projection, jacobian = cv2.projectPoints(nose_3d, rot_vec, trans_vec, cam_matrix, dist_matrix)
-
-                p1 = (int(nose_2d[0]), int(nose_2d[1]))
-                p2 = (int(nose_2d[0] + y * 10), int(nose_2d[1] - x * 10))
+                    status_head = 0
+                    distraction_left.append(0)
+                    distraction_right.append(0)
+                    distraction_bottom.append(0)
+                    distraction_top.append(0)
+                
+                if distraction_top.count(1) >= 3 or distraction_bottom.count(1) >= 3 or distraction_left.count(1) >= 3 or distraction_right.count(1) >= 3:
+                    alert_raised = True
 
                 cv2.line(frame, p1, p2, (0, 0, 0), 2)
 
                 # EAR & DROWNSINESS -------------------------------------------------------------------
+                # -----------------------------------------------------------------------------------------------
                 EAR, _ = calculate_avg_ear(
                     this_face_landmark.landmark,
                     chosen_left_eye_idxs,
@@ -361,8 +372,7 @@ while True:
                             element == "long_blink" for element in prediction_vector
                         )
                         if all_long_blink:
-                            sound_thread = threading.Thread(target=play_sound)
-                            sound_thread.start()  # play alarm
+                            alert_raised = True
 
                     # check 2nd condition:
                     # if True:
@@ -374,7 +384,8 @@ while True:
                     count_rate = 0
 
 				# USER INTERFACE --------------------------------------------------------------------------------
-                    
+				# -----------------------------------------------------------------------------------------------
+                
 				# DRAW FACE LANDMARKS
                 mp_drawing.draw_landmarks(
                     frame,
@@ -397,8 +408,14 @@ while True:
                 # SERIAL COMMUNICATION --------------------------------------------------------------------------------
                 # print(f'[INFO]')
 
+                # AUDIO THINGS
+                if alert_raised:
+                    print('audio XXXXXXX')
+                    sound_thread = threading.Thread(target=play_sound)
+                    sound_thread.start() # play alarm
+
     if detection_result_list:
-        print(detection_result_list)
+        # print(detection_result_list)
         vis_image = visualize(current_frame, detection_result_list[0])
 
         # DETECTION RESULTS
@@ -407,8 +424,10 @@ while True:
             category_name = category.category_name
             if category_name == "cellphone":
                 status_cellphone = "SI"
+                cellphone_detection.append(1)
             else:
                 status_cellphone = "NO"
+                cellphone_detection.append(0)
 
             if category_name == "cigarette":
                 status_cigarrete = "SI"
@@ -418,6 +437,9 @@ while True:
         cv2.imshow("object_detector", vis_image)
         detection_result_list.clear()
     else:
+        cellphone_detection.append(0)
+        status_cellphone = "NO"
+        status_cigarrete = "NO"
         cv2.imshow("object_detector", frame)
 
     # cv2.imshow("Detector de fatiga", frame)
