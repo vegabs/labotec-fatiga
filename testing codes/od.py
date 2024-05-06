@@ -8,7 +8,7 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
-from utils import visualize
+from detector.utils import visualize
 
 
 def run(model: str, camera_id: int, width: int, height: int) -> None:

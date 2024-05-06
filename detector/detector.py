@@ -5,7 +5,6 @@ import time
 import csv
 import joblib
 import threading
-import pygame
 import argparse
 import sys
 import json
@@ -306,28 +305,28 @@ while True:
                 face_2d, face_3d, p1, p2, x, y, z = get_head_position(this_face_landmark.landmark, face_2d, face_3d, img_h, img_w)
 
                 # See where the user's head tilting
-                if y < -15:
+                if y < HEAD_DETECTION_RANGE * -1:
                     text = "Mirando Izquierda"
                     status_head = -1
                     distraction_left.append(1)
                     distraction_right.append(0)
                     distraction_bottom.append(0)
                     distraction_top.append(0)
-                elif y > 15:
+                elif y > HEAD_DETECTION_RANGE:
                     text = "Mirando Derecha"
                     status_head = 1
                     distraction_left.append(0)
                     distraction_right.append(1)
                     distraction_bottom.append(0)
                     distraction_top.append(0)
-                elif x < -15:
+                elif x < HEAD_DETECTION_RANGE * -1:
                     text = "Mirando Abajo"
                     status_head = -2
                     distraction_left.append(0)
                     distraction_right.append(0)
                     distraction_bottom.append(1)
                     distraction_top.append(0)
-                elif x > 15:
+                elif x > HEAD_DETECTION_RANGE:
                     text = "Mirando Arriba"
                     status_head = 2
                     distraction_left.append(0)

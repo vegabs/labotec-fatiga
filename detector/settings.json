@@ -1,7 +1,8 @@
 {
     "MODEL_FILENAME": "models/svm_modelv2.pkl",
     "AUDIO_FILENAME": "media/tone.wav",
-    "OBJECT_DETECTION_MODEL_FILENAME":"model.tflite",
+    "OBJECT_DETECTION_MODEL_FILENAME":"models/model.tflite",
+    "HEAD_DETECTION_RANGE": 20,
     "WIDTH": 640,
     "HEIGHT": 480
 }
