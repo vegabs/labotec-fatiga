@@ -13,6 +13,8 @@ from mediapipe.tasks import python
 import simpleaudio as sa
 from mediapipe.tasks.python import vision
 from utils import visualize
+from PIL import Image
+from matplotlib import cm
 
 # ----------------------------------------------------------------------------
 
@@ -118,6 +120,34 @@ def calculate_avg_ear(landmarks, left_eye_idxs, right_eye_idxs, image_w, image_h
 
     return Avg_EAR, (left_lm_coordinates, right_lm_coordinates)
 
+def get_glasses(img_org, landmarks, frame_width, frame_height):
+    # GLASSES SETTINGS
+    glass_id = [55, 285, 174, 399]
+    coords_points = []
+
+    for i in glass_id:
+        lm = landmarks[i]
+        coord = denormalize_coordinates(lm.x, lm.y, frame_width, frame_height)
+        coords_points.append(coord)
+
+    x_values = [coord[0] for coord in coords_points]
+    y_values = [coord[1] for coord in coords_points]
+
+    # Find the maximum and minimum values for x and y
+    max_x = max(x_values)
+    min_x = min(x_values)
+    max_y = max(y_values)
+    min_y = min(y_values)
+
+    img_org = Image.fromarray(img_org.astype('uint8'), 'RGB')
+    img2 = img_org.crop((min_x, min_y, max_x,max_y))
+    img_blur = cv2.GaussianBlur(np.array(img2),(3,3), sigmaX=0, sigmaY=0)
+    edges = cv2.Canny(image = img_blur, threshold1=100, threshold2=200)
+    edges_center = edges.T[(int(len(edges.T)/2))]
+    if 255 in edges_center:
+        return True
+    else:
+        return False
 
 def visualize_callback(
     result: vision.ObjectDetectorResult, output_image: mp.Image, timestamp_ms: int
@@ -241,8 +271,8 @@ options = vision.ObjectDetectorOptions(
     base_options=base_options,
     running_mode=vision.RunningMode.LIVE_STREAM,
     # display_names='es',
-    # category_allowlist=['cell phone'],
-    score_threshold=0.7,
+    category_allowlist=['cell phone'],
+    score_threshold=0.4,
     result_callback=visualize_callback,
 )
 detector = vision.ObjectDetector.create_from_options(options)
@@ -346,6 +376,9 @@ while True:
 
                 cv2.line(frame, p1, p2, (0, 0, 0), 2)
 
+                #### GLASSES
+                GLASSES_STATE = get_glasses(current_frame, this_face_landmark.landmark, WIDTH, HEIGHT)
+
                 # EAR & DROWNSINESS -------------------------------------------------------------------
                 # -----------------------------------------------------------------------------------------------
                 EAR, _ = calculate_avg_ear(
@@ -403,6 +436,7 @@ while True:
                 show_text(frame, f"EAR: {round(EAR, 2)}", 6)
                 show_text(frame, f"Celular: {status_cellphone}", 7)
                 show_text(frame, f"Cigarro: {status_cigarrete}", 8)
+                show_text(frame, f"Lentes: {str(GLASSES_STATE)}", 9)
 
                 # SERIAL COMMUNICATION --------------------------------------------------------------------------------
                 # print(f'[INFO]')
